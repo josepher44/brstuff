@@ -1,9 +1,4 @@
 cd ..
-git clone https://github.com/3rdIteration/btcrecover.git
-pip3 install -r ~/btcrecover/requirements-full.txt
-pip3 install pushnotif
-update-locale LANG=C.UTF-8
-echo "set -g terminal-overrides \"xterm*:kLFT5=\eOD:kRIT5=\eOC:kUP5=\eOA:kDN5=\eOB:smkx@:rmkx@\"" > ~/.tmux.conf
 cd btcrecover
 sed -i '30i\from pushnotif import PushNotif' btcrecover.py
 sed -i '45i\		handler = PushNotif(key = "lhcYkA0QFkqxdxnf7w88_", event = "btmatch")' btcrecover.py
