@@ -20,9 +20,12 @@ sed -i '8823i\                devicestring = "Found Device: "+pyopencl.device_ty
 sed -i '8820i\            append_to_performancelog(devicestring)' btcrpass.py
 sed -i '8821i\            ws_string = "global-ws = " + str(args.global_ws[0]) + " | local-ws = " + str(args.local_ws[0])' btcrpass.py
 sed -i '8822i\            append_to_performancelog(ws_string)' btcrpass.py
+sed -i '8819i\            devicestring = "Device List: " + pyopencl.device_type.to_string(cl_devices[0].type) + " | " + cl_devices[0].name.strip()' btcrpass.py
 sed -i '6574i\                    append_to_performancelog("--local-ws of " + str(args.local_ws[i]) + " out of bounds for graphics card, absolute failure. Max is "+str(devices[i].max_work_group_size))' btcrpass.py
 sed -i '649i\                append_to_performancelog("--local-ws of "+ str(local_ws[i])+ " out of bounds for graphics card, wallet failure. Max is "+str(max_local_ws) )' btcrpass.py
 sed -i '126i\def append_to_performancelog(message):' btcrpass.py
 sed -i '127i\    file_path = os.path.join(os.path.dirname(__file__), "..", "performancelog.txt")' btcrpass.py
 sed -i '128i\    with open(file_path, "a") as file:' btcrpass.py
 sed -i '129i\        file.write(message + "\\n")' btcrpass.py
+cd ..
+touch performancelog.txt
