@@ -1,6 +1,4 @@
-apt update
-apt install python3 python3-pip python3-dev python3-pyopencl nano mc git python3-bsddb3 -y
-apt install libssl-dev build-essential automake pkg-config libtool libffi-dev libgmp-dev libyaml-cpp-dev libsecp256k1-dev -y
+cd ..
 git clone https://github.com/3rdIteration/btcrecover.git
 pip3 install -r ~/btcrecover/requirements-full.txt
 pip3 install pushnotif
