@@ -11,7 +11,7 @@ sed -i '46i\		handler.send(password_found)' btcrecover.py
 cd btcrecover
 sed -i '8954i\                print("Progress update 8959")' btcrpass.py
 sed -i '8955i\                if args.performance:' btcrpass.py
-sed -i '8956i\                    logoutput = "Computed P/s = "+str(progress.currval/progress.seconds_elapsed)+" P/s" btcrpass.py
+sed -i '8956i\                    logoutput = "Computed P/s = "+str(progress.currval/progress.seconds_elapsed)+" P/s"' btcrpass.py
 sed -i '8957i\                    append_to_performancelog(logoutput)' btcrpass.py
 sed -i '8824i\                append_to_performancelog(devicestring)' btcrpass.py
 sed -i '8825i\                ws_string = "global-ws = " + str(args.global_ws[0]) + " | local-ws = " + str(args.local_ws[0])' btcrpass.py
