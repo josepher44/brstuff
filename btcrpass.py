@@ -8972,10 +8972,9 @@ def main():
                     if passwords_counting_result.ready() and not passwords_counting_result.successful():
                         passwords_counting_result.get()
                 progress.update(passwords_tried)
-                print('Progress update 8959')
-                if args.performance:
-                    logoutput = 'Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s'
-                    append_to_performancelog(logoutput)
+                print('Progress update: ')
+                logoutput = 'Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+progress.seconds_elapsed
+                append_to_performancelog(logoutput)
 
             if l_savestate and passwords_tried % est_passwords_per_5min == 0:
                 do_autosave(args.skip + passwords_tried)
