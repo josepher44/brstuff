@@ -8973,7 +8973,11 @@ def main():
                         passwords_counting_result.get()
                 progress.update(passwords_tried)
                 print('Progress update: ')
-                logoutput = 'Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+progress.seconds_elapsed
+                logoutput=''
+                if args.gpu_names:
+                    logoutput = 'GPU #'+str(args.gpu_names)+': Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+str(progress.seconds_elapsed)
+                else:
+                    logoutput = 'Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+str(progress.seconds_elapsed)
                 append_to_performancelog(logoutput)
 
             if l_savestate and passwords_tried % est_passwords_per_5min == 0:
