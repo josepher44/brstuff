@@ -6153,6 +6153,7 @@ def parse_arguments(effective_argv, wallet = None, base_iterator = None,
 
     global have_progress, progressbar
     if args.no_progress:
+        append_to_performancelog("NoProgress tripped")
         have_progress = False
     else:
         try:
