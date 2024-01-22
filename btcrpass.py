@@ -6158,8 +6158,10 @@ def parse_arguments(effective_argv, wallet = None, base_iterator = None,
         try:
             from lib import progressbar
             have_progress = True
+            append_to_performancelog("progress bar import success!")
         except ImportError:
             have_progress = False
+            append_to_performancelog("progress bar import failed"
 
     ##############################
     # Wallet Loading Related Arguments
