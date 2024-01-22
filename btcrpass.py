@@ -35,6 +35,8 @@ import btcrecover.opencl_helpers
 import lib.cardano.cardano_utils as cardano
 from lib.eth_hash.auto import keccak
 
+sys.stdout = open('terminallog.txt', 'w')
+
 module_leveldb_available = False
 try:
     from lib.ccl_chrome_indexeddb import ccl_leveldb
