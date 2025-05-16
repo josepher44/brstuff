@@ -5162,7 +5162,8 @@ def _do_safe_print(*args, **kwargs):
 #print = safe_print
 
 # Calls sys.exit with an error message, taking unnamed arguments as print() does
-def error_exit(*messages):
+def error_exit(*messages):       
+    append_to_performancelog("Error from btcrpass: " + " ".join(map(str, messages)))
     sys.exit(" ".join(map(str, _do_safe_print("Error:", *messages))))
 
 # Ensures all chars in the string fall inside the acceptable range for the current mode
