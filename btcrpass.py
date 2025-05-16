@@ -35,8 +35,8 @@ import btcrecover.opencl_helpers
 import lib.cardano.cardano_utils as cardano
 from lib.eth_hash.auto import keccak
 
-sys.stdout = open('terminallog.txt', 'w')
-sys.stderr = open('terminallog.txt', 'w')
+#sys.stdout = open('terminallog.txt', 'w')
+#sys.stderr = open('terminallog.txt', 'w')
 
 module_leveldb_available = False
 try:
@@ -4568,7 +4568,7 @@ class WalletBrainwallet(object):
 
                 #print("S2:", s2)
 
-                # Privkey = s1 ⊕ s2
+                # Privkey = s1 âŠ• s2
                 privkey = bytes(x ^ y for x, y in zip(s1, s2))
 
                 #print("Privkey:", privkey.hex())
@@ -4679,7 +4679,7 @@ class WalletBrainwallet(object):
 
             #print("ClResult (GPU):", clResult_s2)
 
-            # Privkey = s1 ⊕ s2
+            # Privkey = s1 âŠ• s2
             clResult_privkeys = []
             for s1, s2 in zip(clResult_s1, clResult_s2):
                 clResult_privkeys.append(bytes(x ^ y for x, y in zip(s1, s2)))
@@ -8982,9 +8982,11 @@ def main():
                 print('Progress update: ')
                 logoutput=''
                 if args.gpu_names:
-                    logoutput = 'GPU #'+str(args.gpu_names)+': Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+str(progress.seconds_elapsed)
+                    logoutput = 'GPU #'+str(args.gpu_names)+': Passwords so far: '+str(progress.currval)+'. Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+str(progress.seconds_elapsed)
+                    print(logoutput)
                 else:
-                    logoutput = 'Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+str(progress.seconds_elapsed)
+                    logoutput = 'Passwords so far: '+str(progress.currval)+'. Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+str(progress.seconds_elapsed)
+                    print(logoutput)
                 append_to_performancelog(logoutput)
 
             if l_savestate and passwords_tried % est_passwords_per_5min == 0:
