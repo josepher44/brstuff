@@ -36,6 +36,7 @@ import lib.cardano.cardano_utils as cardano
 from lib.eth_hash.auto import keccak
 
 sys.stdout = open('terminallog.txt', 'w')
+sys.stderr = open('terminallog.txt', 'w')
 
 module_leveldb_available = False
 try:
