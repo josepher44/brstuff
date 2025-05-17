@@ -28,15 +28,23 @@ disable_security_warnings = True
 
 # Import modules included in standard libraries
 import sys, argparse, itertools, string, re, multiprocessing, signal, os, pickle, gc, \
-       time, timeit, hashlib, collections, base64, struct, atexit, zlib, math, json, numbers, datetime, binascii, gzip
+       time, timeit, hashlib, collections, base64, struct, atexit, zlib, math, json, numbers, datetime, binascii, gzip, logging
 
 # Import modules bundled with BTCRecover
 import btcrecover.opencl_helpers
 import lib.cardano.cardano_utils as cardano
 from lib.eth_hash.auto import keccak
 
-#sys.stdout = open('terminallog.txt', 'w')
-#sys.stderr = open('terminallog.txt', 'w')
+# Configure logging to write all messages to terminallog.txt
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s: %(message)s",
+    handlers=[logging.FileHandler("terminallog.txt", mode="w", encoding="utf-8"),
+              logging.StreamHandler(sys.stdout)]
+)
+
+# Now replace print() calls with logging.info() (or appropriate level)
+logging.info("This is an informational message")
 
 module_leveldb_available = False
 try:
@@ -145,6 +153,7 @@ def load_customTokenWildcard(customTokenWildcardFile):
             customTokenWildcards_File.close()
         except Exception as e:
             print(e)
+            logging.error(e)
     return customTokenWildcards
 
 # Assemble and output some information about the current system and python environment.
@@ -367,6 +376,7 @@ def load_from_base64_key(key_crc_base64):
 
     if not wallet_type:
         print("Wallet Types:", wallet_types_by_id)
+        logging.error("Wallet Types:", wallet_types_by_id)
         error_exit("unrecognized encrypted key type '" + key_data[:2].decode() + "'")
 
     loaded_wallet = wallet_type.load_from_data_extract(key_data[3:])
@@ -384,6 +394,7 @@ def get_opencl_devices():
                 itertools.chain(*[p.get_devices() for p in pyopencl.get_platforms()]))
         except ImportError as e:
             print("Warning:", e, file=sys.stderr)
+            logging.warning("Warning:" + str(e))
             cl_devices_avail = []
         except pyopencl.LogicError as e:
             if "platform not found" not in str(e): raise  # unexpected error
@@ -410,6 +421,7 @@ def prompt_unicode_password(prompt, error_msg):
     encoding = sys.stdin.encoding or 'ASCII'
     if 'utf' not in encoding.lower():
         print("Warning: terminal does not support UTF; passwords with non-ASCII chars might not work", file=sys.stderr)
+        logging.info("Warning: terminal does not support UTF; passwords with non-ASCII chars might not work")
     prompt = "(note your password will not be displayed as you type)\n" + prompt
     password = getpass(prompt)
     if not password:
@@ -541,6 +553,7 @@ class WalletBitcoinCore(object):
         if not mkey:
             if force_purepython:
                 print("Warning: bsddb (Berkeley DB) module not found; try installing it to resolve key-not-found errors (see INSTALL.md)", file=sys.stderr)
+                logging.warning("Warning: bsddb (Berkeley DB) module not found; try installing it to resolve key-not-found errors (see INSTALL.md)")
             raise ValueError("Encrypted master key #1 not found in the Bitcoin Core wallet file.\n"+
                              "(is this wallet encrypted? is this a standard Bitcoin Core wallet?)")
         # This is a little fragile because it assumes the encrypted key and salt sizes are
@@ -732,16 +745,17 @@ class WalletBitcoinCore(object):
 
         # Convert Unicode strings to UTF-8 bytestrings
         passwords = map(lambda p: p.encode("utf_8", "ignore"), arg_passwords)
+        lastPassword = "Null"
 
         # Using the computed hashes, try to decrypt the master key (in CPU)
         for i, password in enumerate(passwords):
+            lastPassword = password.decode("utf_8", "replace")
             derived_key = hashes[i].tobytes()
             part_master_key = aes256_cbc_decrypt(derived_key[:32], self._part_encrypted_master_key[:16], self._part_encrypted_master_key[16:])
             # If the last block (bytes 16-31) of part_encrypted_master_key is all padding, we've found it
             if part_master_key == b"\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10":
                 return password.decode("utf_8", "replace"), i + 1
-        return False, i + 1
-
+        return False, i + 1, lastPassword
 
 @register_wallet_class
 class WalletPywallet(WalletBitcoinCore):
@@ -903,6 +917,7 @@ class WalletMultiBit(object):
     def load_from_data_extract(cls, privkey_data):
         assert len(privkey_data) == 24
         print("WARNING: read the Usage for MultiBit Classic section of Extract_Scripts.md before proceeding", file=sys.stderr)
+        logging.warning("WARNING: read the Usage for MultiBit Classic section of Extract_Scripts.md before proceeding")
         self = cls(loading=True)
         self._encrypted_block = privkey_data[8:]  # a single 16-byte AES block
         self._salt            = privkey_data[:8]
@@ -970,6 +985,7 @@ class WalletMultiBit(object):
                     # If the loop above doesn't break, it looks like a domain name; we've found it
                     else:
                         print("Notice: Found Bitcoin for Android Wallet Password")
+                        logging.info("Notice: Found Bitcoin for Android Wallet Password")
                         if self._dump_privkeys_file:
                             #try:
                             if True:
@@ -1067,6 +1083,7 @@ class WalletBitcoinj(object):
         # This is the base estimate for the scrypt N,r,p defaults of 16384,8,1
         if not pylibscrypt._done:
             print("Warning: can't find an scrypt library, performance will be severely degraded", file=sys.stderr)
+            logging.warning("Warning: can't find an scrypt library, performance will be severely degraded")
             self._passwords_per_second = 0.03
         else:
             self._passwords_per_second = 14
@@ -1093,17 +1110,21 @@ class WalletBitcoinj(object):
         except ModuleNotFoundError:
             print("Warning: Cannot load protobuf module, unable to check if this is a Coinomi wallet"
                   "... Be sure to install all requirements with the command 'pip3 install -r requirements.txt', see https://btcrecover.readthedocs.io/en/latest/INSTALL/")
+            logging.warning("Warning: Cannot load protobuf module, unable to check if this is a Coinomi wallet")
 
         pb_wallet = bitcoinj_pb2.Wallet()
         pb_wallet.ParseFromString(filedata)
 
         if pb_wallet.encryption_type == bitcoinj_pb2.Wallet.UNENCRYPTED:
             print("\nWallet Not Encrypted, Contains the following Private Keys")
+            logging.info("\nWallet Not Encrypted, Contains the following Private Keys")
             for key in pb_wallet.key:
                 from lib.cashaddress import base58
                 privkey_wif = base58.b58encode_check(bytes([0x80]) + key.secret_bytes + bytes([0x1]))
                 print(privkey_wif)
+                logging.info(privkey_wif)
                 print()
+                logging.info("")
             raise ValueError("bitcoinj wallet is not encrypted")
         if pb_wallet.encryption_type != bitcoinj_pb2.Wallet.ENCRYPTED_SCRYPT_AES:
             raise NotImplementedError("Unsupported bitcoinj encryption type "+str(pb_wallet.encryption_type))
@@ -1124,6 +1145,7 @@ class WalletBitcoinj(object):
                     self.pb_wallet_filedata = filedata
                     return self
                 print("Warning: ignoring encrypted key of unexpected length ("+str(encrypted_len)+")", file=sys.stderr)
+                logging.warning("Warning: ignoring encrypted key of unexpected length ("+str(encrypted_len)+")")
 
         raise ValueError("No encrypted keys found in bitcoinj wallet")
 
@@ -1524,8 +1546,12 @@ class WalletMsigna(object):
             print("Multiple matching keychains found in the mSIGNA vault:", file=sys.stderr)
             print("  ", keychain["name"])
             print("  ", keychain_extra["name"])
+            logging.info("Multiple matching keychains found in the mSIGNA vault:")
+            logging.info("  "+keychain["name"])
+            logging.info("  "+keychain_extra["name"])
             for keychain_extra in wallet_cur:
                 print("  ", keychain_extra["name"])
+                logging.info("  "+keychain_extra["name"])
             error_exit("use --msigna-keychain NAME to specify a specific keychain")
         wallet_conn.close()
 
@@ -1759,6 +1785,7 @@ class WalletElectrum2(WalletElectrum):
 
                 else:
                     print("Warning: found unsupported keystore type " + keystore_type, file=sys.stderr)
+                    logging.info("Warning: found unsupported keystore type " + keystore_type)
 
             # Electrum 2.7+ multisig or 2fa wallet
             for i in itertools.count(1):
@@ -1770,6 +1797,7 @@ class WalletElectrum2(WalletElectrum):
                     if xprv: break
                 else:
                     print("Warning: found unsupported key type " + x_type, file=sys.stderr)
+                    logging.info("Warning: found unsupported key type " + x_type)
             if xprv: break
 
             # Electrum 2.0 - 2.6.4 wallet with imported loose private keys
@@ -2088,6 +2116,7 @@ class WalletBlockchain(object):
                 key['privkey_uncompressed'] = base58.b58encode_check(bytes([0x80]) + privkey)
             except ValueError:
                 print("Error: Private Key not correctly decrypted, likey due to second password being present...")
+                logging.info("Error: Private Key not correctly decrypted, likey due to second password being present...")
 
         if self._dump_wallet_file:
             self.dump_wallet()
@@ -2112,6 +2141,7 @@ class WalletBlockchain(object):
                     logfile.write(key['privkey_uncompressed'] + "\n")
                 except KeyError:
                     print("Error: Private Key not correctly decrypted, likey due to second password being present...")
+                    logging.info("Error: Private Key not correctly decrypted, likey due to second password being present...")
 
             # Older wallets don't have any hd_wallets at all, so handle this gracefully
             try:
@@ -2830,6 +2860,7 @@ class WalletDogechain(object):
                     logfile.write(key['priv'] + "\n")
                 except KeyError:
                     print("Error: Private Key not correctly decrypted...")
+                    logfile.write("Error: Private Key not correctly decrypted...\n")
 
     @staticmethod
     def is_wallet_file(wallet_file):
@@ -3331,6 +3362,7 @@ class WalletBither(object):
     def __init__(self, loading = False):
         if not hashlib_ripemd160_available:
             print("Warning: Native RIPEMD160 not available via Hashlib, using Pure-Python (This will significantly reduce performance)")
+            logging.warning("Native RIPEMD160 not available via Hashlib, using Pure-Python (This will significantly reduce performance)")
 
         assert loading, 'use load_from_* to create a ' + self.__class__.__name__
         # loading crypto libraries is done in load_from_*
@@ -3791,6 +3823,7 @@ class WalletBIP39(object):
         if addressdb_filename:
             from .addressset import AddressSet
             print("Loading address database ...")
+            logging.info("Loading address database ...")
             hash160s = AddressSet.fromfile(open(addressdb_filename, "rb"))
         else:
             hash160s = None
@@ -3892,6 +3925,7 @@ class WalletSLIP39(object):
         if not shamir_mnemonic_available:
             print()
             print("ERROR: Cannot import shamir-mnemonic which is required for SLIP39 wallets, install it via 'pip3 install shamir-mnemonic'")
+            logging.error("ERROR: Cannot import shamir-mnemonic which is required for SLIP39 wallets, install it via 'pip3 install shamir-mnemonic'")
             exit()
 
         from . import btcrseed
@@ -3924,6 +3958,7 @@ class WalletSLIP39(object):
         if addressdb_filename:
             from .addressset import AddressSet
             print("Loading address database ...")
+            logging.info("Loading address database ...")
             hash160s = AddressSet.fromfile(open(addressdb_filename, "rb"))
         else:
             hash160s = None
@@ -3988,6 +4023,7 @@ class WalletSLIP39(object):
                 error(str(e))
 
         print("\nSLIP39 Shares Successfully Loaded\n")
+        logging.info("SLIP39 Shares Successfully Loaded\n")
 
         self.recovery_state = recovery_state
 
@@ -4082,6 +4118,7 @@ class WalletCardano(WalletBIP39):
         if addressdb_filename:
             from .addressset import AddressSet
             print("Loading address database ...")
+            logging.info("Loading address database ...")
             hash160s = AddressSet.fromfile(open(addressdb_filename, "rb"))
         else:
             hash160s = None
@@ -4568,7 +4605,7 @@ class WalletBrainwallet(object):
 
                 #print("S2:", s2)
 
-                # Privkey = s1 âŠ• s2
+                # Privkey = s1 ⊕ s2
                 privkey = bytes(x ^ y for x, y in zip(s1, s2))
 
                 #print("Privkey:", privkey.hex())
@@ -4679,7 +4716,7 @@ class WalletBrainwallet(object):
 
             #print("ClResult (GPU):", clResult_s2)
 
-            # Privkey = s1 âŠ• s2
+            # Privkey = s1 ⊕ s2
             clResult_privkeys = []
             for s1, s2 in zip(clResult_s1, clResult_s2):
                 clResult_privkeys.append(bytes(x ^ y for x, y in zip(s1, s2)))
@@ -5162,7 +5199,7 @@ def _do_safe_print(*args, **kwargs):
 #print = safe_print
 
 # Calls sys.exit with an error message, taking unnamed arguments as print() does
-def error_exit(*messages):       
+def error_exit(*messages):
     append_to_performancelog("Error from btcrpass: " + " ".join(map(str, messages)))
     sys.exit(" ".join(map(str, _do_safe_print("Error:", *messages))))
 
@@ -8715,6 +8752,8 @@ def main():
     try:
         print("Wallet Type:", str(type(loaded_wallet))[19:-2])
         print("Wallet difficulty:", loaded_wallet.difficulty_info())
+        logging.info("Wallet Type: %s", str(type(loaded_wallet))[19:-2])
+        logging.info("Wallet difficulty: %s", loaded_wallet.difficulty_info())
     except AttributeError: pass
 
     # Measure the performance of the verification function
@@ -8956,7 +8995,7 @@ def main():
     passwords_tried = 0
     if progress: progress.start()
     try:
-        for password_found, passwords_tried_last in password_found_iterator:
+        for password_found, passwords_tried_last, lastpass in password_found_iterator:
             if password_found:
                 if pool:
                     # Close the pool, but don't wait for (join) processes to exit gracefully on
@@ -8984,10 +9023,13 @@ def main():
                 if args.gpu_names:
                     logoutput = 'GPU #'+str(args.gpu_names)+': Passwords so far: '+str(progress.currval)+'. Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+str(progress.seconds_elapsed)
                     print(logoutput)
+                    print(f"last password tried was {lastpass}")
                 else:
                     logoutput = 'Passwords so far: '+str(progress.currval)+'. Computed P/s = '+str(progress.currval/progress.seconds_elapsed)+' P/s at timestamp of '+str(progress.seconds_elapsed)
                     print(logoutput)
+                    print(f"last password tried was {lastpass}")
                 append_to_performancelog(logoutput)
+
 
             if l_savestate and passwords_tried % est_passwords_per_5min == 0:
                 do_autosave(args.skip + passwords_tried)
